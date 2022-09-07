@@ -82,10 +82,15 @@ def create_app(test_config=None):
     Clicking on the page numbers should update the questions.
     """
 
-    @app.route("/questions")
+    @app.route("/questions/")
     def retrieve_questions():
         selection = Question.query.order_by(Question.id).all()
         current_questions = paginate_questions(request, selection)
+
+        categories = Category.query.order_by(Category.id).all()
+        categories = [category.format() for category in categories]
+
+        current_category = Category.query.filter(Category.id == 1).one_or_none()
 
         if len(current_questions) == 0:
             abort(404)
@@ -95,6 +100,8 @@ def create_app(test_config=None):
                 "success": True,
                 "questions": current_questions,
                 "total_questions": len(Question.query.all()),
+                "categories": categories,
+                "current_category": current_category.format(),
             }
         )
 
@@ -186,7 +193,7 @@ def create_app(test_config=None):
     def search_question():
         body = request.get_json()
 
-        search = body.get("search", None)
+        search = body.get("searchTerm", None)
 
         try:
             
@@ -195,12 +202,18 @@ def create_app(test_config=None):
 
             current_questions = paginate_questions(request, selection)
 
+            categories = Category.query.order_by(Category.id).all()
+            categories = [category.format() for category in categories]
+
+            current_category = Category.query.filter(Category.id == 1).one_or_none()
+
             return jsonify(
             {
                 "success": True,
                 "search": search,
                 "questions": current_questions,
-                "total_questions": len(Question.query.all()),
+                "total_questions": len(selection),
+                "current_category": current_category.format(),
             }
         )
 
@@ -219,7 +232,7 @@ def create_app(test_config=None):
     category to be shown.
     """
 
-    @app.route("/questions/categories/<string:category_id>")
+    @app.route("/categories/<string:category_id>/questions/")
     def retrieve_questions_by_category(category_id):
         selection = Question.query.filter(Question.category == category_id).all()
         current_questions = paginate_questions(request, selection)
@@ -232,8 +245,8 @@ def create_app(test_config=None):
             {
                 "success": True,
                 "questions": current_questions,
-                "category": category.format(),
-                "total_questions": len(Question.query.all()),
+                "curent_category": category.format(),
+                "total_questions": len(selection),
             }
         )
 
@@ -248,6 +261,33 @@ def create_app(test_config=None):
     one question at a time is displayed, the user is allowed to answer
     and shown whether they were correct or not.
     """
+
+    @app.route("/quizzes")
+    def play_quiz():
+        body = request.get_json()
+        category = body.get("quiz_category", None)
+        previous_questions = body.get("previous_questions", None)
+        
+        selection = Question.query.filter(Question.category == category).all()
+        
+        random.shuffle(selection)
+        current_questions = paginate_questions(request, selection)
+        category = Category.query.filter(Category.id == int(category)).one_or_none()
+
+        if len(current_questions) == 0:
+            abort(404)
+
+        return jsonify(
+            {
+                "success": True,
+                "questions": current_questions,
+                "curent_category": category.format(),
+                "total_questions": len(selection),
+            }
+        )
+
+
+
 
     """
     @TODO:
